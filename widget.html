@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photobooth Beschikbaarheid</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #2D0A1F 0%, #1A0A2E 100%);
+      min-height: 100vh;
+      color: #fff;
+      padding: 24px 16px;
+    }
+
+    #widget {
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    .step {
+      display: none;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .step.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h2 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      text-align: center;
+      color: #f0e6f0;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #c0a8c0;
+      font-size: 0.9rem;
+      margin-top: -12px;
+      margin-bottom: 20px;
+    }
+
+    /* Date picker */
+    .date-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 40px 20px;
+    }
+
+    .date-container label {
+      font-size: 1rem;
+      color: #d4c0d4;
+    }
+
+    input[type="date"] {
+      width: 100%;
+      max-width: 280px;
+      padding: 14px 16px;
+      border: 2px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      font-size: 1.05rem;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="date"]:focus {
+      border-color: #D4A574;
+    }
+
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      cursor: pointer;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      padding: 14px 32px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #D4A574, #c4925e);
+      color: #1A0A2E;
+      width: 100%;
+      max-width: 280px;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(212,165,116,0.35);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: #d4c0d4;
+      padding: 10px 24px;
+      font-size: 0.9rem;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.18);
+    }
+
+    .btn-select {
+      background: linear-gradient(135deg, #D4A574, #c4925e);
+      color: #1A0A2E;
+      width: 100%;
+      padding: 12px;
+    }
+
+    .btn-select:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(212,165,116,0.3);
+    }
+
+    /* Booth cards */
+    .booth-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .booth-card {
+      background: rgba(255,255,255,0.07);
+      border: 2px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      transition: all 0.2s;
+    }
+
+    .booth-card.available:hover {
+      border-color: rgba(212,165,116,0.4);
+      background: rgba(255,255,255,0.1);
+    }
+
+    .booth-card.unavailable {
+      opacity: 0.45;
+      filter: grayscale(0.6);
+    }
+
+    .booth-card-img {
+      width: 90px;
+      height: 120px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .booth-card-img-fallback {
+      width: 90px;
+      height: 120px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      color: #a090a0;
+      text-align: center;
+      flex-shrink: 0;
+      padding: 8px;
+    }
+
+    .booth-card-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .booth-card-name {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #f0e6f0;
+    }
+
+    .booth-card-desc {
+      font-size: 0.82rem;
+      color: #b0a0b0;
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+
+    .badge-unavailable {
+      display: inline-block;
+      padding: 6px 14px;
+      background: rgba(255,80,80,0.15);
+      color: #ff8888;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+
+    /* Back button row */
+    .back-row {
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    /* Form */
+    .selected-summary {
+      background: rgba(212,165,116,0.12);
+      border: 1px solid rgba(212,165,116,0.25);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .selected-summary img {
+      width: 50px;
+      height: 65px;
+      object-fit: contain;
+    }
+
+    .selected-summary-text {
+      font-size: 0.9rem;
+      color: #d4c0d4;
+    }
+
+    .selected-summary-text strong {
+      color: #D4A574;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: #c0a8c0;
+      margin-bottom: 6px;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      font-size: 0.95rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+      border-color: #D4A574;
+    }
+
+    .form-group input::placeholder,
+    .form-group textarea::placeholder {
+      color: #7a6a7a;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 70px;
+    }
+
+    .form-submit {
+      margin-top: 20px;
+    }
+
+    .form-submit .btn-primary {
+      max-width: 100%;
+    }
+
+    /* Honeypot */
+    .hp-field {
+      position: absolute;
+      left: -9999px;
+      opacity: 0;
+      height: 0;
+      width: 0;
+      pointer-events: none;
+    }
+
+    /* Confirmation */
+    .confirmation {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .confirmation-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 20px;
+      background: rgba(80,200,120,0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+    }
+
+    .confirmation p {
+      color: #c0a8c0;
+      font-size: 0.95rem;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #b0a0b0;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: #D4A574;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Error */
+    .error-box {
+      background: rgba(255,80,80,0.1);
+      border: 1px solid rgba(255,80,80,0.25);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      color: #ff9999;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+    }
+
+    .error-box button {
+      margin-top: 10px;
+    }
+
+    /* No results */
+    .no-results {
+      text-align: center;
+      padding: 30px 20px;
+      color: #b0a0b0;
+    }
+
+    .no-results p {
+      margin-bottom: 16px;
+    }
+
+    /* Responsive */
+    @media (max-width: 400px) {
+      body { padding: 16px 10px; }
+      .booth-card { flex-direction: column; text-align: center; padding: 16px; }
+      .booth-card-img { width: 70px; height: 90px; }
+      h2 { font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+  <div id="widget">
+    <!-- Loading state -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Beschikbaarheid laden...</p>
+    </div>
+
+    <!-- Error state -->
+    <div id="error" class="step">
+      <div class="error-box">
+        <p>Kan beschikbaarheid niet laden. Controleer je internetverbinding.</p>
+        <button class="btn btn-secondary" onclick="loadData()">Opnieuw proberen</button>
+      </div>
+    </div>
+
+    <!-- Step 1: Date -->
+    <div id="step-1" class="step">
+      <h2>Photobooth beschikbaarheid</h2>
+      <p class="subtitle">Kies een datum om te zien welke modellen beschikbaar zijn</p>
+      <div class="date-container">
+        <input type="date" id="date-input" aria-label="Kies een datum">
+        <button class="btn btn-primary" id="check-btn" disabled onclick="checkAvailability()">Beschikbaarheid checken</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Results -->
+    <div id="step-2" class="step">
+      <h2>Beschikbaar op <span id="date-display"></span></h2>
+      <div id="booth-cards" class="booth-cards"></div>
+      <div id="none-available" class="no-results" style="display:none;">
+        <p>Helaas zijn er geen photobooths beschikbaar op deze datum.</p>
+      </div>
+      <div class="back-row">
+        <button class="btn btn-secondary" onclick="goToStep(1)">Andere datum kiezen</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Contact form -->
+    <div id="step-3" class="step">
+      <h2>Offerte aanvragen</h2>
+      <div id="selected-summary" class="selected-summary"></div>
+      <form id="quote-form" onsubmit="submitForm(event)">
+        <div class="form-group">
+          <label for="email">E-mailadres *</label>
+          <input type="email" id="email" name="email" required placeholder="naam@voorbeeld.nl">
+        </div>
+        <div class="form-group">
+          <label for="phone">Telefoonnummer *</label>
+          <input type="tel" id="phone" name="phone" required placeholder="06 12345678">
+        </div>
+        <div class="form-group">
+          <label for="location">Adres eventlocatie *</label>
+          <input type="text" id="location" name="location" required placeholder="Straat 1, 1234 AB Stad">
+        </div>
+        <div class="form-group">
+          <label for="message">Opmerkingen (optioneel)</label>
+          <textarea id="message" name="message" placeholder="Bijv. tijdstip, speciaal verzoek..."></textarea>
+        </div>
+        <!-- Honeypot (Formsubmit) -->
+        <div class="hp-field" aria-hidden="true">
+          <input type="text" name="_honey" tabindex="-1" autocomplete="off">
+        </div>
+        <div class="form-submit">
+          <button type="submit" class="btn btn-primary" id="submit-btn">Offerte aanvragen</button>
+        </div>
+      </form>
+      <div class="back-row" style="margin-top:14px;">
+        <button class="btn btn-secondary" onclick="goToStep(2)">Terug naar modellen</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Confirmation -->
+    <div id="step-4" class="step">
+      <div class="confirmation">
+        <div class="confirmation-icon">&#10003;</div>
+        <h2>Bedankt voor je aanvraag!</h2>
+        <p>We hebben je offerte-aanvraag ontvangen en nemen zo snel mogelijk contact met je op.</p>
+        <button class="btn btn-primary" style="max-width:280px;" onclick="resetWidget()">Nieuwe aanvraag</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================
+    // CONFIGURATIE
+    // ============================================
+    const FORMSUBMIT_URL = 'https://formsubmit.co/ajax/info@djunes.nl';
+
+    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1l9PBckHnMhaZBGtb9OB3uuy1MtFwun9_1HoNwl3_GPY/gviz/tq?tqx=out:csv';
+
+    const BOOTHS = [
+      {
+        id: 'houten',
+        key: 'houten',
+        name: 'Houtlook Photobooth',
+        description: 'Perfect voor strandlocaties, kastelen of locaties met industriële uitstraling.',
+        image: 'https://www.djunes.nl/bestanden/text-editor/fotobooth.png'
+      },
+      {
+        id: 'stalen',
+        key: 'stalen',
+        name: 'Stalen Photobooth',
+        description: 'Perfect voor locatie met een strakke en moderne uitstraling.',
+        image: 'https://www.djunes.nl/bestanden/photobooth.png'
+      },
+      {
+        id: 'witte',
+        key: 'witte',
+        name: 'Witte Houten Photobooth',
+        description: 'Past perfect bij locaties waarbij veel wit in interieur gebruikt is.',
+        image: 'https://www.djunes.nl/bestanden/text-editor/Witte_houten_photobooth.png'
+      }
+    ];
+
+    // State
+    let availabilityData = {};
+    let selectedDate = '';
+    let selectedBooth = null;
+
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+      const dateInput = document.getElementById('date-input');
+      const today = new Date().toISOString().split('T')[0];
+      dateInput.min = today;
+      dateInput.max = '2036-01-31';
+      dateInput.addEventListener('change', () => {
+        document.getElementById('check-btn').disabled = !dateInput.value;
+      });
+      loadData();
+    });
+
+    async function loadData() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('error').classList.remove('active');
+      hideAllSteps();
+
+      try {
+        const response = await fetch(SHEET_CSV_URL);
+        if (!response.ok) throw new Error('Fetch failed');
+        const csv = await response.text();
+        availabilityData = parseCSV(csv);
+        document.getElementById('loading').style.display = 'none';
+        goToStep(1);
+      } catch (err) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').classList.add('active');
+        document.getElementById('error').style.display = 'block';
+      }
+    }
+
+    function parseCSV(csv) {
+      const lines = csv.trim().split('\n');
+      const data = {};
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.replace(/"/g, '').trim().toLowerCase());
+        if (cols.length >= 4 && cols[0]) {
+          data[cols[0]] = {
+            houten: cols[1] === 'ja',
+            witte: cols[2] === 'ja',
+            stalen: cols[3] === 'ja'
+          };
+        }
+      }
+      return data;
+    }
+
+    function formatDateForLookup(isoDate) {
+      const [y, m, d] = isoDate.split('-');
+      return `${d}-${m}-${y}`;
+    }
+
+    function formatDateForDisplay(isoDate) {
+      const [y, m, d] = isoDate.split('-');
+      const months = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+      return `${parseInt(d)} ${months[parseInt(m)-1]} ${y}`;
+    }
+
+    function hideAllSteps() {
+      document.querySelectorAll('.step').forEach(s => {
+        s.classList.remove('active');
+        s.style.display = 'none';
+      });
+    }
+
+    function goToStep(step) {
+      hideAllSteps();
+      const el = document.getElementById('step-' + step);
+      el.style.display = 'block';
+      // Trigger reflow for animation
+      void el.offsetWidth;
+      el.classList.add('active');
+
+      // Notify parent for iframe resizing
+      try {
+        window.parent.postMessage({ type: 'photobooth-widget-resize', height: document.body.scrollHeight + 40 }, '*');
+      } catch(e) {}
+    }
+
+    function checkAvailability() {
+      const dateInput = document.getElementById('date-input');
+      if (!dateInput.value) return;
+
+      selectedDate = dateInput.value;
+      const lookupDate = formatDateForLookup(selectedDate);
+      const availability = availabilityData[lookupDate];
+
+      document.getElementById('date-display').textContent = formatDateForDisplay(selectedDate);
+
+      const container = document.getElementById('booth-cards');
+      container.innerHTML = '';
+
+      let anyAvailable = false;
+
+      if (!availability) {
+        // Date not in sheet
+        document.getElementById('none-available').style.display = 'block';
+        document.getElementById('none-available').querySelector('p').textContent =
+          'Deze datum valt buiten ons beschikbaarheidsoverzicht. Neem contact met ons op voor meer informatie.';
+      } else {
+        document.getElementById('none-available').style.display = 'none';
+
+        BOOTHS.forEach(booth => {
+          const isAvailable = availability[booth.key];
+          if (isAvailable) anyAvailable = true;
+
+          const card = document.createElement('div');
+          card.className = 'booth-card ' + (isAvailable ? 'available' : 'unavailable');
+          card.innerHTML = `
+            <img src="${booth.image}" alt="${booth.name}" class="booth-card-img"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="booth-card-img-fallback" style="display:none;">${booth.name}</div>
+            <div class="booth-card-info">
+              <div class="booth-card-name">${booth.name}</div>
+              <div class="booth-card-desc">${booth.description}</div>
+              ${isAvailable
+                ? `<button class="btn btn-select" onclick="selectBooth('${booth.id}')">Kies dit model</button>`
+                : '<span class="badge-unavailable">Niet beschikbaar</span>'
+              }
+            </div>
+          `;
+          container.appendChild(card);
+        });
+
+        if (!anyAvailable) {
+          document.getElementById('none-available').style.display = 'block';
+          document.getElementById('none-available').querySelector('p').textContent =
+            'Helaas zijn er geen photobooths beschikbaar op deze datum.';
+        }
+      }
+
+      goToStep(2);
+    }
+
+    function selectBooth(boothId) {
+      selectedBooth = BOOTHS.find(b => b.id === boothId);
+      if (!selectedBooth) return;
+
+      document.getElementById('selected-summary').innerHTML = `
+        <img src="${selectedBooth.image}" alt="${selectedBooth.name}"
+             onerror="this.style.display='none';">
+        <div class="selected-summary-text">
+          <strong>${selectedBooth.name}</strong>
+          ${formatDateForDisplay(selectedDate)}
+        </div>
+      `;
+
+      document.getElementById('quote-form').reset();
+      goToStep(3);
+    }
+
+    async function submitForm(event) {
+      event.preventDefault();
+
+      // Honeypot check
+      const hp = document.querySelector('input[name="_honey"]');
+      if (hp && hp.value) return;
+
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Versturen...';
+
+      const payload = {
+        _subject: 'Offerte aanvraag: ' + selectedBooth.name + ' op ' + formatDateForDisplay(selectedDate),
+        _cc: 'info@photobooths-huren.nl',
+        _replyto: document.getElementById('email').value,
+        _template: 'table',
+        _captcha: 'false',
+        _honey: '',
+        'Photobooth': selectedBooth.name,
+        'Datum': formatDateForDisplay(selectedDate),
+        'E-mail': document.getElementById('email').value,
+        'Telefoon': document.getElementById('phone').value,
+        'Locatie evenement': document.getElementById('location').value,
+        'Opmerkingen': document.getElementById('message').value || '-'
+      };
+
+      try {
+        const response = await fetch(FORMSUBMIT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (result.success) {
+          goToStep(4);
+        } else {
+          alert('Er is iets misgegaan bij het versturen. Probeer het opnieuw.');
+        }
+      } catch (err) {
+        alert('Er is iets misgegaan bij het versturen. Probeer het opnieuw.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Offerte aanvragen';
+      }
+    }
+
+    function resetWidget() {
+      selectedDate = '';
+      selectedBooth = null;
+      document.getElementById('date-input').value = '';
+      document.getElementById('check-btn').disabled = true;
+      goToStep(1);
+    }
+  </script>
+</body>
+</html>
