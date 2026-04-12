@@ -309,6 +309,47 @@
       max-width: 100%;
     }
 
+    /* Autocomplete */
+    .autocomplete-wrapper {
+      position: relative;
+    }
+
+    .autocomplete-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #2a1a2e;
+      border: 2px solid rgba(212,165,116,0.3);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      z-index: 100;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .autocomplete-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #d4c0d4;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      transition: background 0.15s;
+    }
+
+    .autocomplete-item:last-child {
+      border-bottom: none;
+    }
+
+    .autocomplete-item:hover,
+    .autocomplete-item.active {
+      background: rgba(212,165,116,0.15);
+      color: #fff;
+    }
+
     /* Honeypot */
     .hp-field {
       position: absolute;
@@ -454,7 +495,10 @@
         </div>
         <div class="form-group">
           <label for="location">Adres eventlocatie *</label>
-          <input type="text" id="location" name="location" required placeholder="Straat 1, 1234 AB Stad">
+          <div class="autocomplete-wrapper">
+            <input type="text" id="location" name="location" required placeholder="Begin met typen..." autocomplete="off">
+            <ul id="autocomplete-list" class="autocomplete-list" style="display:none;"></ul>
+          </div>
         </div>
         <div class="form-group">
           <label for="message">Opmerkingen (optioneel)</label>
@@ -725,6 +769,90 @@
       document.getElementById('check-btn').disabled = true;
       goToStep(1);
     }
+
+    // ============================================
+    // ADRES AUTOCOMPLETE (PDOK Locatieserver)
+    // ============================================
+    (function() {
+      const input = document.getElementById('location');
+      const list = document.getElementById('autocomplete-list');
+      let debounceTimer = null;
+      let activeIndex = -1;
+
+      input.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const query = this.value.trim();
+        if (query.length < 3) { hideList(); return; }
+        debounceTimer = setTimeout(() => fetchSuggestions(query), 300);
+      });
+
+      async function fetchSuggestions(query) {
+        try {
+          const url = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/suggest?q=' + encodeURIComponent(query) + '&fq=type:adres&rows=5';
+          const res = await fetch(url);
+          const data = await res.json();
+          const docs = data.response && data.response.docs || [];
+          if (docs.length === 0) { hideList(); return; }
+          showList(docs);
+        } catch(e) { hideList(); }
+      }
+
+      function showList(docs) {
+        list.innerHTML = '';
+        activeIndex = -1;
+        docs.forEach((doc, i) => {
+          const li = document.createElement('li');
+          li.className = 'autocomplete-item';
+          li.textContent = doc.weergavenaam;
+          li.addEventListener('click', () => selectAddress(doc));
+          li.addEventListener('mouseenter', () => {
+            activeIndex = i;
+            updateActive();
+          });
+          list.appendChild(li);
+        });
+        list.style.display = 'block';
+      }
+
+      function hideList() {
+        list.style.display = 'none';
+        list.innerHTML = '';
+        activeIndex = -1;
+      }
+
+      function selectAddress(doc) {
+        input.value = doc.weergavenaam;
+        hideList();
+      }
+
+      function updateActive() {
+        const items = list.querySelectorAll('.autocomplete-item');
+        items.forEach((el, i) => el.classList.toggle('active', i === activeIndex));
+      }
+
+      input.addEventListener('keydown', function(e) {
+        const items = list.querySelectorAll('.autocomplete-item');
+        if (!items.length) return;
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          activeIndex = (activeIndex + 1) % items.length;
+          updateActive();
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          activeIndex = (activeIndex - 1 + items.length) % items.length;
+          updateActive();
+        } else if (e.key === 'Enter' && activeIndex >= 0) {
+          e.preventDefault();
+          items[activeIndex].click();
+        } else if (e.key === 'Escape') {
+          hideList();
+        }
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.autocomplete-wrapper')) hideList();
+      });
+    })();
   </script>
 </body>
 </html>
