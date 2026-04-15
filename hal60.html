@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HAL60 — Beschikbaarheid ruimtes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Roboto+Slab:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --accent: #BF7541;
+      --accent-dark: #a6612f;
+      --heading: #374E56;
+      --text: #212529;
+      --muted: rgba(0,0,0,.55);
+      --bg: #FFFFFF;
+      --surface: #F8F9FA;
+      --border: rgba(0,0,0,.1);
+      --border-strong: rgba(0,0,0,.18);
+      --radius: 4px;
+      --font-body: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-heading: 'Roboto Slab', Georgia, serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 24px 16px;
+    }
+
+    #widget {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .step {
+      display: none;
+      animation: fadeIn 0.35s ease;
+    }
+
+    .step.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1, h2, h3 {
+      font-family: var(--font-heading);
+      color: var(--heading);
+      font-weight: 500;
+    }
+
+    h2 {
+      font-size: 1.75rem;
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 28px;
+    }
+
+    /* Step 1 — Date */
+    .date-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 360px;
+    }
+
+    .date-container label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    input[type="date"],
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 1rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    input[type="date"]:focus,
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    input[type="tel"]:focus,
+    input[type="number"]:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(191,117,65,.12);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 90px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      padding: 11px 22px;
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      font-size: 0.95rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.08s;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    .btn:active { transform: translateY(1px); }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) { background: var(--accent-dark); }
+
+    .btn-primary:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--accent);
+      border-color: var(--border);
+    }
+
+    .btn-secondary:hover { background: #eef0f2; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      padding: 8px 14px;
+      font-weight: 500;
+    }
+
+    .btn-ghost:hover { color: var(--accent); }
+
+    .btn-full { width: 100%; }
+
+    /* Room cards */
+    .room-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .room-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+    }
+
+    .room-card.available { cursor: pointer; }
+
+    .room-card.available:hover {
+      border-color: var(--accent);
+      box-shadow: 0 6px 20px rgba(0,0,0,.08);
+      transform: translateY(-2px);
+    }
+
+    .room-card.unavailable {
+      opacity: 0.55;
+      filter: grayscale(0.5);
+    }
+
+    .room-card-img {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      object-fit: cover;
+      display: block;
+      background: var(--surface);
+    }
+
+    .room-card-body {
+      padding: 16px 18px 18px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .room-card-name {
+      font-family: var(--font-heading);
+      color: var(--heading);
+      font-size: 1.1rem;
+      font-weight: 500;
+      margin-bottom: 6px;
+      text-transform: capitalize;
+    }
+
+    .room-card-status {
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .status-available { color: #2d7a3d; }
+    .status-unavailable { color: #8a3a3a; }
+
+    .room-card-cta {
+      margin-top: auto;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .room-card-cta::after {
+      content: '→';
+      transition: transform 0.2s;
+    }
+
+    .room-card.available:hover .room-card-cta::after {
+      transform: translateX(4px);
+    }
+
+    /* Selected summary (step 3) */
+    .selected-summary {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: var(--radius);
+      margin-bottom: 28px;
+    }
+
+    .selected-summary img {
+      width: 72px;
+      height: 54px;
+      object-fit: cover;
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+
+    .selected-summary-text {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .selected-summary-text strong {
+      display: block;
+      color: var(--heading);
+      font-family: var(--font-heading);
+      font-size: 1.05rem;
+      font-weight: 500;
+      text-transform: capitalize;
+      margin-bottom: 2px;
+    }
+
+    /* Type choice (Optie vs Info) */
+    .type-choice {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .type-option {
+      padding: 16px 14px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      background: var(--bg);
+      cursor: pointer;
+      text-align: left;
+      font-family: inherit;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .type-option:hover { border-color: var(--accent); }
+
+    .type-option.selected {
+      border-color: var(--accent);
+      background: rgba(191,117,65,.06);
+    }
+
+    .type-option-title {
+      font-family: var(--font-heading);
+      font-weight: 500;
+      color: var(--heading);
+      font-size: 1rem;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .type-option-title::before {
+      content: '';
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid var(--border-strong);
+      background: var(--bg);
+      transition: border-color 0.15s, background 0.15s;
+      flex-shrink: 0;
+    }
+
+    .type-option.selected .type-option-title::before {
+      border-color: var(--accent);
+      background: radial-gradient(circle, var(--accent) 40%, var(--bg) 42%);
+    }
+
+    .type-option-desc {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* Form layout */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .form-group { margin-bottom: 14px; }
+
+    .form-group.full { grid-column: 1 / -1; }
+
+    .form-group label {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .form-group label .req { color: var(--accent); }
+
+    .form-submit {
+      margin-top: 22px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    /* Honeypot */
+    .hp-field {
+      position: absolute;
+      left: -9999px;
+      opacity: 0;
+      height: 0;
+      width: 0;
+      pointer-events: none;
+    }
+
+    /* Confirmation */
+    .confirmation {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .confirmation-icon {
+      width: 68px;
+      height: 68px;
+      margin: 0 auto 22px;
+      background: rgba(45,122,61,.12);
+      color: #2d7a3d;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+    }
+
+    .confirmation h2 { margin-bottom: 14px; }
+
+    .confirmation p {
+      color: var(--muted);
+      margin-bottom: 24px;
+      max-width: 440px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Loading & error */
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error-box {
+      background: #fdf2f2;
+      border: 1px solid #f0c4c4;
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      color: #8a3a3a;
+      font-size: 0.95rem;
+      margin-bottom: 16px;
+    }
+
+    .error-box p { margin-bottom: 12px; }
+
+    .no-results {
+      padding: 30px 20px;
+      text-align: center;
+      color: var(--muted);
+      background: var(--surface);
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+    }
+
+    .back-row {
+      margin-top: 18px;
+    }
+
+    /* Responsive */
+    @media (max-width: 560px) {
+      body { padding: 18px 14px; }
+      h2 { font-size: 1.45rem; }
+      .type-choice { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .room-grid { grid-template-columns: 1fr; }
+      .form-submit .btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div id="widget">
+    <!-- Loading state -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Beschikbaarheid laden...</p>
+    </div>
+
+    <!-- Error state -->
+    <div id="error" class="step">
+      <div class="error-box">
+        <p>Kan beschikbaarheid niet laden. Controleer je internetverbinding en probeer het opnieuw.</p>
+        <button class="btn btn-secondary" onclick="loadData()">Opnieuw proberen</button>
+      </div>
+    </div>
+
+    <!-- Step 1: Date -->
+    <div id="step-1" class="step">
+      <h2>Check onze beschikbaarheid</h2>
+      <p class="subtitle">Kies een datum om te zien welke ruimtes bij HAL60 op die dag nog beschikbaar zijn.</p>
+      <div class="date-container">
+        <label for="date-input">Datum evenement</label>
+        <input type="date" id="date-input" aria-label="Kies een datum">
+        <button class="btn btn-primary" id="check-btn" disabled onclick="checkAvailability()">Toon beschikbare ruimtes</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Results -->
+    <div id="step-2" class="step">
+      <h2>Beschikbaar op <span id="date-display"></span></h2>
+      <p class="subtitle">Klik op een ruimte om vrijblijvend een optie te nemen of meer informatie te ontvangen.</p>
+      <div id="room-grid" class="room-grid"></div>
+      <div id="none-available" class="no-results" style="display:none;"></div>
+      <div class="back-row">
+        <button class="btn btn-ghost" onclick="goToStep(1)">← Andere datum kiezen</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Contact form -->
+    <div id="step-3" class="step">
+      <h2>Vrijblijvend contact</h2>
+      <p class="subtitle">Laat je gegevens achter — we nemen binnen één werkdag contact met je op.</p>
+      <div id="selected-summary" class="selected-summary"></div>
+
+      <div class="type-choice" role="radiogroup" aria-label="Type aanvraag">
+        <button type="button" class="type-option selected" data-type="optie" onclick="setType('optie')">
+          <div class="type-option-title">Optie nemen</div>
+          <div class="type-option-desc">Ik wil deze ruimte vrijblijvend in optie houden voor deze datum.</div>
+        </button>
+        <button type="button" class="type-option" data-type="info" onclick="setType('info')">
+          <div class="type-option-title">Info ontvangen</div>
+          <div class="type-option-desc">Ik ontvang graag meer informatie over deze ruimte en de mogelijkheden.</div>
+        </button>
+      </div>
+
+      <form id="contact-form" onsubmit="submitForm(event)">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="name">Naam <span class="req">*</span></label>
+            <input type="text" id="name" name="name" required placeholder="Je volledige naam">
+          </div>
+          <div class="form-group">
+            <label for="company">Bedrijf / organisatie</label>
+            <input type="text" id="company" name="company" placeholder="Optioneel">
+          </div>
+          <div class="form-group">
+            <label for="email">E-mailadres <span class="req">*</span></label>
+            <input type="email" id="email" name="email" required placeholder="naam@voorbeeld.nl">
+          </div>
+          <div class="form-group">
+            <label for="phone">Telefoon <span class="req">*</span></label>
+            <input type="tel" id="phone" name="phone" required placeholder="06 12345678">
+          </div>
+          <div class="form-group">
+            <label for="guests">Aantal gasten</label>
+            <input type="number" id="guests" name="guests" min="1" placeholder="Bijv. 150">
+          </div>
+          <div class="form-group">
+            <label for="event-type">Type evenement</label>
+            <input type="text" id="event-type" name="event-type" placeholder="Bijv. bedrijfsfeest, gala">
+          </div>
+          <div class="form-group full">
+            <label for="message">Opmerkingen of vraag</label>
+            <textarea id="message" name="message" placeholder="Bijv. gewenste tijdstippen, catering, extra wensen..."></textarea>
+          </div>
+        </div>
+        <!-- Honeypot (FormSubmit) -->
+        <div class="hp-field" aria-hidden="true">
+          <input type="text" name="_honey" tabindex="-1" autocomplete="off">
+        </div>
+        <div class="form-submit">
+          <button type="submit" class="btn btn-primary" id="submit-btn">Verstuur aanvraag</button>
+          <button type="button" class="btn btn-ghost" onclick="goToStep(2)">← Terug naar ruimtes</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Step 4: Confirmation -->
+    <div id="step-4" class="step">
+      <div class="confirmation">
+        <div class="confirmation-icon">&#10003;</div>
+        <h2>Bedankt voor je aanvraag!</h2>
+        <p id="confirmation-text">We hebben je aanvraag ontvangen en nemen binnen één werkdag contact met je op.</p>
+        <button class="btn btn-primary" onclick="resetWidget()">Nieuwe beschikbaarheid checken</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================
+    // CONFIGURATIE
+    // ============================================
+    const FORMSUBMIT_URL = 'https://formsubmit.co/ajax/info@hal60.nl';
+
+    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1PpWwQBfjJoFC9xDs8LdE0mCx3vsWFPUrTq7OUKRuuw4/gviz/tq?tqx=out:csv';
+
+    const FALLBACK_IMAGE = 'https://www.hal60.nl/assets/uploads/20221219-Foto_hal60-V2.jpg';
+
+    function imageForRoom(name) {
+      const n = (name || '').toLowerCase();
+      if (/\b75\b/.test(n))  return 'https://www.hal60.nl/assets/uploads/Particulier_evenement.jpg';
+      if (/\b100\b/.test(n)) return 'https://www.hal60.nl/assets/uploads/DSC_1049.jpg';
+      if (/\b200\b/.test(n)) return 'https://www.hal60.nl/assets/uploads/Black_box.jpg';
+      if (/\b500\b/.test(n)) return 'https://www.hal60.nl/assets/uploads/_8108866-41.jpg';
+      if (/\b750\b/.test(n)) return 'https://www.hal60.nl/assets/uploads/HAL60_Festiviral_(1).jpg';
+      if (/black/.test(n))   return 'https://www.hal60.nl/assets/uploads/Black_box.jpg';
+      if (/theater|podium/.test(n)) return 'https://www.hal60.nl/assets/uploads/Cultureel_evenement.jpg';
+      if (/foyer|buiten/.test(n)) return 'https://www.hal60.nl/assets/uploads/Particulier_evenement.jpg';
+      return FALLBACK_IMAGE;
+    }
+
+    // State
+    let roomColumns = [];      // [{ index: 1, name: 'ruimte 75 personen' }, ...]
+    let availabilityData = {}; // { 'dd-mm-yyyy': { byIndex: { 1: true, 2: false, ... } } }
+    let selectedDate = '';
+    let selectedRoom = null;   // { index, name, image }
+    let selectedType = 'optie';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const dateInput = document.getElementById('date-input');
+      const today = new Date().toISOString().split('T')[0];
+      dateInput.min = today;
+      dateInput.max = '2036-01-31';
+      dateInput.addEventListener('change', () => {
+        document.getElementById('check-btn').disabled = !dateInput.value;
+      });
+      loadData();
+    });
+
+    async function loadData() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('error').style.display = 'none';
+      document.getElementById('error').classList.remove('active');
+      hideAllSteps();
+
+      try {
+        const bust = '&cb=' + Date.now();
+        const response = await fetch(SHEET_CSV_URL + bust);
+        if (!response.ok) throw new Error('Fetch failed: ' + response.status);
+        const csv = await response.text();
+        parseCSV(csv);
+        document.getElementById('loading').style.display = 'none';
+        goToStep(1);
+      } catch (err) {
+        console.error('[hal60] load error', err);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').style.display = 'block';
+        document.getElementById('error').classList.add('active');
+        notifyResize();
+      }
+    }
+
+    function parseCSVLine(line) {
+      const out = [];
+      let cur = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i+1] === '"') { cur += '"'; i++; }
+          else { inQuotes = !inQuotes; }
+        } else if (ch === ',' && !inQuotes) {
+          out.push(cur);
+          cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+      out.push(cur);
+      return out.map(c => c.trim());
+    }
+
+    function parseCSV(csv) {
+      const lines = csv.trim().split(/\r?\n/);
+      if (lines.length < 2) {
+        roomColumns = [];
+        availabilityData = {};
+        return;
+      }
+
+      const headers = parseCSVLine(lines[0]);
+      roomColumns = [];
+      for (let i = 1; i < headers.length; i++) {
+        const name = headers[i];
+        if (name) roomColumns.push({ index: i, name });
+      }
+
+      availabilityData = {};
+      for (let r = 1; r < lines.length; r++) {
+        const cols = parseCSVLine(lines[r]);
+        if (!cols[0]) continue;
+        const date = cols[0].toLowerCase();
+        const byIndex = {};
+        for (const col of roomColumns) {
+          const val = (cols[col.index] || '').toLowerCase();
+          byIndex[col.index] = val === 'ja';
+        }
+        availabilityData[date] = { byIndex };
+      }
+    }
+
+    function formatDateForLookup(isoDate) {
+      const [y, m, d] = isoDate.split('-');
+      return `${d}-${m}-${y}`;
+    }
+
+    function formatDateForDisplay(isoDate) {
+      const [y, m, d] = isoDate.split('-');
+      const months = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+      return `${parseInt(d,10)} ${months[parseInt(m,10)-1]} ${y}`;
+    }
+
+    function hideAllSteps() {
+      document.querySelectorAll('.step').forEach(s => {
+        s.classList.remove('active');
+        s.style.display = 'none';
+      });
+    }
+
+    function notifyResize() {
+      try {
+        window.parent.postMessage(
+          { type: 'hal60-widget-resize', height: document.body.scrollHeight + 40 },
+          '*'
+        );
+      } catch(e) {}
+    }
+
+    function goToStep(step) {
+      hideAllSteps();
+      const el = document.getElementById('step-' + step);
+      el.style.display = 'block';
+      void el.offsetWidth;
+      el.classList.add('active');
+      // double post to catch async image loads
+      notifyResize();
+      setTimeout(notifyResize, 300);
+    }
+
+    function checkAvailability() {
+      const dateInput = document.getElementById('date-input');
+      if (!dateInput.value) return;
+
+      selectedDate = dateInput.value;
+      const lookupDate = formatDateForLookup(selectedDate);
+      const dayData = availabilityData[lookupDate];
+
+      document.getElementById('date-display').textContent = formatDateForDisplay(selectedDate);
+
+      const grid = document.getElementById('room-grid');
+      const noneBox = document.getElementById('none-available');
+      grid.innerHTML = '';
+      noneBox.style.display = 'none';
+      noneBox.textContent = '';
+
+      if (roomColumns.length === 0) {
+        noneBox.textContent = 'Er is op dit moment geen ruimtedata beschikbaar. Neem contact op via info@hal60.nl.';
+        noneBox.style.display = 'block';
+        goToStep(2);
+        return;
+      }
+
+      if (!dayData) {
+        noneBox.textContent = 'Deze datum valt buiten onze beschikbaarheidskalender. Neem contact met ons op via info@hal60.nl.';
+        noneBox.style.display = 'block';
+        goToStep(2);
+        return;
+      }
+
+      let anyAvailable = false;
+      roomColumns.forEach(col => {
+        const isAvailable = !!dayData.byIndex[col.index];
+        if (isAvailable) anyAvailable = true;
+
+        const card = document.createElement('div');
+        card.className = 'room-card ' + (isAvailable ? 'available' : 'unavailable');
+        const img = imageForRoom(col.name);
+
+        card.innerHTML = `
+          <img src="${img}" alt="${escapeHtml(col.name)}" class="room-card-img"
+               onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}';">
+          <div class="room-card-body">
+            <div class="room-card-name">${escapeHtml(col.name)}</div>
+            <div class="room-card-status ${isAvailable ? 'status-available' : 'status-unavailable'}">
+              ${isAvailable ? '● Beschikbaar' : '● Niet beschikbaar'}
+            </div>
+            ${isAvailable ? '<div class="room-card-cta">Kies deze ruimte</div>' : ''}
+          </div>
+        `;
+        if (isAvailable) {
+          card.addEventListener('click', () => selectRoom(col.index));
+        }
+        grid.appendChild(card);
+      });
+
+      if (!anyAvailable) {
+        noneBox.textContent = 'Helaas zijn er op deze datum geen ruimtes beschikbaar. Kies een andere datum of neem contact op.';
+        noneBox.style.display = 'block';
+      }
+
+      goToStep(2);
+    }
+
+    function selectRoom(colIndex) {
+      const col = roomColumns.find(c => c.index === colIndex);
+      if (!col) return;
+
+      selectedRoom = {
+        index: col.index,
+        name: col.name,
+        image: imageForRoom(col.name)
+      };
+
+      document.getElementById('selected-summary').innerHTML = `
+        <img src="${selectedRoom.image}" alt="${escapeHtml(selectedRoom.name)}"
+             onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}';">
+        <div class="selected-summary-text">
+          <strong>${escapeHtml(selectedRoom.name)}</strong>
+          ${formatDateForDisplay(selectedDate)}
+        </div>
+      `;
+
+      selectedType = 'optie';
+      updateTypeUI();
+      document.getElementById('contact-form').reset();
+      goToStep(3);
+    }
+
+    function setType(type) {
+      selectedType = type;
+      updateTypeUI();
+    }
+
+    function updateTypeUI() {
+      document.querySelectorAll('.type-option').forEach(el => {
+        el.classList.toggle('selected', el.dataset.type === selectedType);
+      });
+    }
+
+    async function submitForm(event) {
+      event.preventDefault();
+
+      const hp = document.querySelector('input[name="_honey"]');
+      if (hp && hp.value) return;
+
+      const btn = document.getElementById('submit-btn');
+      const originalLabel = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Versturen...';
+
+      const typeLabel = selectedType === 'optie' ? 'Vrijblijvende optie nemen' : 'Informatie ontvangen';
+      const subjectPrefix = selectedType === 'optie' ? 'Optie-aanvraag' : 'Informatieaanvraag';
+
+      const payload = {
+        _subject: `${subjectPrefix}: ${selectedRoom.name} — ${formatDateForDisplay(selectedDate)}`,
+        _replyto: document.getElementById('email').value,
+        _template: 'table',
+        _captcha: 'false',
+        _honey: '',
+        'Type aanvraag': typeLabel,
+        'Ruimte': selectedRoom.name,
+        'Datum': formatDateForDisplay(selectedDate),
+        'Naam': document.getElementById('name').value,
+        'Bedrijf': document.getElementById('company').value || '-',
+        'E-mail': document.getElementById('email').value,
+        'Telefoon': document.getElementById('phone').value,
+        'Aantal gasten': document.getElementById('guests').value || '-',
+        'Type evenement': document.getElementById('event-type').value || '-',
+        'Opmerkingen': document.getElementById('message').value || '-'
+      };
+
+      try {
+        const response = await fetch(FORMSUBMIT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (result.success) {
+          document.getElementById('confirmation-text').textContent =
+            selectedType === 'optie'
+              ? 'We hebben je optie-aanvraag ontvangen en nemen binnen één werkdag contact met je op om de optie te bevestigen.'
+              : 'We hebben je informatieaanvraag ontvangen en sturen je binnen één werkdag meer informatie over deze ruimte.';
+          goToStep(4);
+        } else {
+          alert('Er is iets misgegaan bij het versturen. Probeer het opnieuw of mail naar info@hal60.nl.');
+        }
+      } catch (err) {
+        console.error('[hal60] submit error', err);
+        alert('Er is iets misgegaan bij het versturen. Probeer het opnieuw of mail naar info@hal60.nl.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
+    }
+
+    function resetWidget() {
+      selectedDate = '';
+      selectedRoom = null;
+      selectedType = 'optie';
+      document.getElementById('date-input').value = '';
+      document.getElementById('check-btn').disabled = true;
+      goToStep(1);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    window.addEventListener('load', notifyResize);
+  </script>
+</body>
+</html>
